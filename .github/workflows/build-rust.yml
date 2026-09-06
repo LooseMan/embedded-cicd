@@ -1,0 +1,54 @@
+name: Build Rust Binary
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/build-rust.yml'
+      - 'rust/**/*.rs'
+      - 'rust/Cargo.toml'
+      - 'rust/Cargo.lock'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  build:
+    name: Build Rust Binary
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Normalize image namespace
+        id: image
+        env:
+          OWNER: ${{ github.repository_owner }}
+        run: echo "namespace=ghcr.io/${OWNER,,}" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build Rust binary in builder container
+        env:
+          IMAGE: ${{ steps.image.outputs.namespace }}/rust-builder:latest
+        run: |
+          mkdir -p rust/dist
+          docker run --rm \
+            --mount "type=bind,source=${GITHUB_WORKSPACE}/rust,target=/workspace" \
+            "$IMAGE" \
+            rustc hello_world.rs -o /workspace/dist/hello_world
+
+      - name: Upload Rust binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: rust-binary
+          path: rust/dist/hello_world
+          if-no-files-found: error

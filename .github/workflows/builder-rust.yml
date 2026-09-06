@@ -1,0 +1,43 @@
+name: Build and Push Rust Builder Image
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/builder-rust.yml'
+      - 'rust/Containerfile'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    name: Rust Builder
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Normalize image namespace
+        id: image
+        env:
+          OWNER: ${{ github.repository_owner }}
+        run: echo "namespace=ghcr.io/${OWNER,,}" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ./rust
+          file: ./rust/Containerfile
+          push: true
+          tags: ${{ steps.image.outputs.namespace }}/rust-builder:latest
