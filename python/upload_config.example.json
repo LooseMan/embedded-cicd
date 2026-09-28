@@ -1,0 +1,11 @@
+{
+  "local_dir": "/path/to/local",
+  "filename_pattern": ".*\\.zip",
+  "sftp_server": {
+    "host": "sftp.example.com",
+    "port": 22,
+    "username": "sftp_user",
+    "password": "change_me",
+    "remote_dir": "/remote/upload/path"
+  }
+}
