@@ -21,6 +21,30 @@ SAMPLE_SIZE = 256 * 1024
 CHUNK_SIZE = 1024 * 1024
 
 
+def detect_utf16(sample: bytes) -> str | None:
+    """Detect UTF-16 from its BOM or its typical alternating NUL bytes."""
+
+    if sample.startswith(b"\xff\xfe"):
+        return "UTF-16LE"
+    if sample.startswith(b"\xfe\xff"):
+        return "UTF-16BE"
+
+    # BOM-less UTF-16 is common in source trees.  ASCII-heavy text has a NUL
+    # in every other byte; this also prevents chardet from calling it UTF-8.
+    if len(sample) < 4:
+        return None
+    even_nuls = sample[::2].count(b"\x00")
+    odd_nuls = sample[1::2].count(b"\x00")
+    even_ratio = even_nuls / len(sample[::2])
+    odd_ratio = odd_nuls / len(sample[1::2])
+
+    if odd_ratio >= 0.20 and odd_ratio >= even_ratio * 2:
+        return "UTF-16LE"
+    if even_ratio >= 0.20 and even_ratio >= odd_ratio * 2:
+        return "UTF-16BE"
+    return None
+
+
 def count_eol(data: bytes) -> tuple[int, int, int]:
     """Return the number of CRLF, LF, and CR line endings in *data*."""
 
@@ -53,10 +77,14 @@ def detect(path: Path) -> tuple[str, str]:
 
     if not sample:
         return "EMPTY", "NONE"
-    if b"\x00" in sample:
+    utf16_encoding = detect_utf16(sample)
+    if utf16_encoding:
+        encoding = utf16_encoding
+    elif b"\x00" in sample:
         return "BINARY", "BINARY"
+    else:
+        encoding = chardet.detect(sample).get("encoding") or "UNKNOWN"
 
-    encoding = chardet.detect(sample).get("encoding") or "UNKNOWN"
     crlf, lf, cr = count_eol(sample)
 
     if not (crlf or lf or cr) and len(sample) == SAMPLE_SIZE:
@@ -80,6 +108,14 @@ def get_group(path: Path) -> tuple[str, str]:
     if path.suffix:
         return "extension", path.suffix.lower()
     return "filename", name
+
+
+def normalize_summary_encoding(encoding: str) -> str:
+    """Normalize equivalent encodings for summary.csv."""
+
+    if encoding.upper() == "ASCII":
+        return "UTF-8"
+    return encoding
 
 
 def survey(
@@ -116,7 +152,8 @@ def survey(
                 writer.writerow([path.relative_to(target).as_posix(),
                                  group_type, key, encoding, eol])
                 if encoding not in {"BINARY", "ERROR", "EMPTY"}:
-                    summary[group_type, key, encoding, eol] += 1
+                    summary_encoding = normalize_summary_encoding(encoding)
+                    summary[group_type, key, summary_encoding, eol] += 1
 
     with summary_csv.open("w", newline="", encoding="utf-8-sig") as f:
         writer = csv.writer(f)
