@@ -1,0 +1,41 @@
+include:
+  - local: .gitlab/ci/build-go.yml
+  - local: .gitlab/ci/build-rust.yml
+  - local: .gitlab/ci/builder-go.yml
+  - local: .gitlab/ci/builder-rust.yml
+
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "main"'
+      changes:
+        - .gitlab-ci.yml
+        - .gitlab/ci/build-go.yml
+        - .gitlab/ci/build-rust.yml
+        - .gitlab/ci/builder-go.yml
+        - .gitlab/ci/builder-rust.yml
+        - go/**/*.go
+        - go/go.mod
+        - go/go.sum
+        - go/Containerfile
+        - rust/**/*.rs
+        - rust/Cargo.toml
+        - rust/Cargo.lock
+        - rust/rust-toolchain.toml
+        - rust/Containerfile
+    - when: never
+
+variables:
+  DOCKER_HOST: tcp://docker:2376
+  DOCKER_TLS_CERTDIR: /certs
+  DOCKER_TLS_VERIFY: "1"
+  DOCKER_CERT_PATH: "$DOCKER_TLS_CERTDIR/client"
+
+default:
+  image: docker:27.5.1-cli
+  services:
+    - name: docker:27.5.1-dind
+      alias: docker
+  before_script:
+    - test -n "$CI_REGISTRY" || (echo "Enable the GitLab Container Registry for this project." && exit 1)
+    - printf '%s' "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY" --username "$CI_REGISTRY_USER" --password-stdin
