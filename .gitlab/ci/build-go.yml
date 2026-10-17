@@ -1,0 +1,23 @@
+build-go:
+  stage: build
+  script:
+    - mkdir -p go/dist
+    - IMAGE="$CI_REGISTRY_IMAGE/go-builder:latest"
+    - docker run --rm --mount "type=bind,source=$CI_PROJECT_DIR/go,target=/workspace" "$IMAGE" go build -o /workspace/dist/hello_world .
+  artifacts:
+    name: go-binary
+    paths:
+      - go/dist/hello_world
+    expire_in: 90 days
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+      when: manual
+      allow_failure: true
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "main"'
+      changes:
+        - .gitlab-ci.yml
+        - .gitlab/ci/build-go.yml
+        - .github/workflows/build-go.yml
+        - go/**/*.go
+        - go/go.mod
+        - go/go.sum

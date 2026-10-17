@@ -1,0 +1,16 @@
+build-rust-builder:
+  stage: build
+  script:
+    - IMAGE="$CI_REGISTRY_IMAGE/rust-builder:latest"
+    - docker build --pull --file rust/Containerfile --tag "$IMAGE" rust
+    - docker push "$IMAGE"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+      when: manual
+      allow_failure: true
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "main"'
+      changes:
+        - .gitlab-ci.yml
+        - .gitlab/ci/builder-rust.yml
+        - .github/workflows/builder-rust.yml
+        - rust/Containerfile

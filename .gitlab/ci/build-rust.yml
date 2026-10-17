@@ -1,0 +1,24 @@
+build-rust:
+  stage: build
+  script:
+    - mkdir -p rust/dist
+    - IMAGE="$CI_REGISTRY_IMAGE/rust-builder:latest"
+    - docker run --rm --mount "type=bind,source=$CI_PROJECT_DIR/rust,target=/workspace" "$IMAGE" sh -c 'cargo build --release && cp target/release/hello /workspace/dist/hello_world'
+  artifacts:
+    name: rust-binary
+    paths:
+      - rust/dist/hello_world
+    expire_in: 90 days
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+      when: manual
+      allow_failure: true
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "main"'
+      changes:
+        - .gitlab-ci.yml
+        - .gitlab/ci/build-rust.yml
+        - .github/workflows/build-rust.yml
+        - rust/**/*.rs
+        - rust/Cargo.toml
+        - rust/Cargo.lock
+        - rust/rust-toolchain.toml

@@ -1,4 +1,4 @@
-name: Build and Push Go Builder Image
+name: Build and Push Go Runtime Image
 
 on:
   push:
@@ -7,6 +7,9 @@ on:
     paths:
       - '.github/workflows/builder-go.yml'
       - 'go/Containerfile'
+      - 'go/**/*.go'
+      - 'go/go.mod'
+      - 'go/go.sum'
   workflow_dispatch:
 
 permissions:
@@ -15,7 +18,7 @@ permissions:
 
 jobs:
   build:
-    name: Go Builder
+    name: Go Runtime
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -34,10 +37,26 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Build Go binary
+        env:
+          IMAGE: embedded-cicd-go-build:ci
+        run: |
+          mkdir -p go/dist
+          docker build \
+            --file go/Containerfile \
+            --target build \
+            --tag "$IMAGE" \
+            go
+          docker run --rm \
+            --user root \
+            --mount "type=bind,source=${GITHUB_WORKSPACE}/go,target=/workspace" \
+            "$IMAGE" \
+            go build -o /workspace/dist/hello_world .
+
       - name: Build and push
         uses: docker/build-push-action@v7
         with:
           context: ./go
           file: ./go/Containerfile
           push: true
-          tags: ${{ steps.image.outputs.namespace }}/go-builder:latest
+          tags: ${{ steps.image.outputs.namespace }}/go-runtime:latest

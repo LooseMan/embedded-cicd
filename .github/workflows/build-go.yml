@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - '.github/workflows/build-go.yml'
+      - 'go/Containerfile'
       - 'go/**/*.go'
       - 'go/go.mod'
       - 'go/go.sum'
@@ -13,7 +14,6 @@ on:
 
 permissions:
   contents: read
-  packages: read
 
 jobs:
   build:
@@ -23,25 +23,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Normalize image namespace
-        id: image
-        env:
-          OWNER: ${{ github.repository_owner }}
-        run: echo "namespace=ghcr.io/${OWNER,,}" >> "$GITHUB_OUTPUT"
-
-      - name: Log in to GHCR
-        uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Build Go binary in builder container
         env:
-          IMAGE: ${{ steps.image.outputs.namespace }}/go-builder:latest
+          IMAGE: embedded-cicd-go-build:ci
         run: |
           mkdir -p go/dist
+          docker build \
+            --file go/Containerfile \
+            --target build \
+            --tag "$IMAGE" \
+            go
           docker run --rm \
+            --user root \
             --mount "type=bind,source=${GITHUB_WORKSPACE}/go,target=/workspace" \
             "$IMAGE" \
             go build -o /workspace/dist/hello_world .
