@@ -1,0 +1,15 @@
+# OS metadata
+.DS_Store
+
+# Rust build outputs
+**/target/
+**/dist/
+
+# Python-generated files
+**/__pycache__/
+*.py[cod]
+
+# Generated reports and archives
+/output/
+/encoding-survey.zip
+/py.tar.gz

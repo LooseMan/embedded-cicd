@@ -9,6 +9,7 @@ on:
       - 'rust/**/*.rs'
       - 'rust/Cargo.toml'
       - 'rust/Cargo.lock'
+      - 'rust/rust-toolchain.toml'
   workflow_dispatch:
 
 permissions:
@@ -44,7 +45,7 @@ jobs:
           docker run --rm \
             --mount "type=bind,source=${GITHUB_WORKSPACE}/rust,target=/workspace" \
             "$IMAGE" \
-            rustc hello_world.rs -o /workspace/dist/hello_world
+            sh -c 'cargo build --release && cp target/release/hello /workspace/dist/hello_world'
 
       - name: Upload Rust binary
         uses: actions/upload-artifact@v6
