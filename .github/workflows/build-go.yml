@@ -44,7 +44,7 @@ jobs:
           docker run --rm \
             --mount "type=bind,source=${GITHUB_WORKSPACE}/go,target=/workspace" \
             "$IMAGE" \
-            go build -o /workspace/dist/hello_world hello_world.go
+            go build -o /workspace/dist/hello_world .
 
       - name: Upload Go binary
         uses: actions/upload-artifact@v6

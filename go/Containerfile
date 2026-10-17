@@ -1,3 +1,8 @@
-FROM golang:1.27.1
+FROM golang:1.22
 
 WORKDIR /workspace
+
+COPY go.mod ./
+RUN go mod download
+
+COPY . .

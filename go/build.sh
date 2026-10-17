@@ -28,4 +28,4 @@ docker run --rm \
     --mount "type=bind,source=$(pwd),target=/workspace" \
     embedded-cicd-go \
     env GOOS="$target_os" GOARCH="$target_arch" \
-    go build -o "$output" hello_world.go
+    go build -o "$output" .
