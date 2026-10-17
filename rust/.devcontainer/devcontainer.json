@@ -3,7 +3,11 @@
 {
 	"name": "Rust v1 (Bookworm)",
 	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-	"image": "mcr.microsoft.com/devcontainers/rust:1-bookworm",
+	"build": {
+		"dockerfile": "../Containerfile",
+		"context": "..",
+		"target": "build"
+	},
 	"customizations": {
 		"vscode": {
 			"extensions": [
