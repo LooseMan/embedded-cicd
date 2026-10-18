@@ -13,8 +13,8 @@ ghcr.io/<OWNER>/<IMAGE_NAME>:<TAG>
 例えば、GitHub ユーザーが `LooseMan`、リポジトリ名が `embedded-cicd` の場合は、次のようになる。
 
 ```text
-ghcr.io/looseman/embedded-cicd-go-builder:latest
-ghcr.io/looseman/embedded-cicd-rust-builder:latest
+ghcr.io/looseman/go-runtime:latest
+ghcr.io/looseman/rust-runtime:latest
 ```
 
 ## 小文字に統一する
@@ -22,8 +22,8 @@ ghcr.io/looseman/embedded-cicd-rust-builder:latest
 Docker のイメージリポジトリ名は小文字でなければならない。
 
 ```text
-ghcr.io/LooseMan/go-builder:latest  # エラー
-ghcr.io/looseman/go-builder:latest  # 正しい
+ghcr.io/LooseMan/go-runtime:latest  # エラー
+ghcr.io/looseman/go-runtime:latest  # 正しい
 ```
 
 GitHub のユーザー名や Organization 名に大文字が含まれる可能性があるため、GitHub Actions ではタグを作る前に小文字化する。
@@ -39,7 +39,7 @@ GitHub のユーザー名や Organization 名に大文字が含まれる可能�
 その後、次のように使用する。
 
 ```yaml
-tags: ${{ steps.image.outputs.namespace }}/go-builder:latest
+tags: ${{ steps.image.outputs.namespace }}/go-runtime:latest
 ```
 
 ## リポジトリ名をイメージ名に含める場合
@@ -47,7 +47,7 @@ tags: ${{ steps.image.outputs.namespace }}/go-builder:latest
 リポジトリ名は `OWNER` の代わりにはならない。イメージ名の一部として含める。
 
 ```yaml
-tags: ${{ steps.image.outputs.namespace }}/${{ github.event.repository.name }}-go-builder:latest
+tags: ${{ steps.image.outputs.namespace }}/${{ github.event.repository.name }}-go-runtime:latest
 ```
 
 この場合、`github.event.repository.name` は `embedded-cicd` となる。
@@ -96,11 +96,11 @@ steps:
 `docker run ghcr.io/<OWNER>/<IMAGE_NAME>:<TAG>` は、ローカルにイメージがなければ自動的に pull する。取得処理を明示したい場合は、次のように `docker pull` を先に実行する。
 
 ```yaml
-- name: Pull builder image
+- name: Pull runtime image
   run: docker pull "$IMAGE"
 ```
 
-公開イメージであればログインと `packages: read` は省略できるが、ビルダーイメージにはコンパイラーなどの実行環境が含まれるため、通常は private のまま Actions の `GITHUB_TOKEN` で読み取る構成を推奨する。
+公開イメージであればログインと `packages: read` は省略できる。runtime image を private にする場合は、Actions の `GITHUB_TOKEN` で読み取る。
 
 なお、イメージを push する場合は `packages: write` が必要である。`read` は取得専用、`write` は取得と push の権限である。
 
@@ -121,27 +121,34 @@ on:
 リポジトリ名を `embedded-cicd` とする場合、GHCR のパッケージ名は次のようにする。
 
 ```text
-go-builder
-rust-builder
+go-runtime
+rust-runtime
 ```
 
 リポジトリ名を明示したい場合は、次の形式も使用できる。
 
 ```text
-embedded-cicd-go-builder
-embedded-cicd-rust-builder
+embedded-cicd-go-runtime
+embedded-cicd-rust-runtime
 ```
 
-## ビルダーイメージの更新条件
+## ランタイムイメージの更新条件
 
-ビルダーイメージは、アプリケーションのソースコード変更では再ビルドしない。
-ビルド環境を変更する次のファイルが `main` ブランチへ push された場合だけ、自動ビルドする。
+ランタイムイメージは、ビルド環境またはアプリケーションの変更時に再ビルドする。
+次のファイルが `main` ブランチへ push された場合に自動ビルドする。
 
 ```text
 .github/workflows/builder-go.yml
 .github/workflows/builder-rust.yml
 go/Containerfile
 rust/Containerfile
+go/**/*.go
+go/go.mod
+go/go.sum
+rust/**/*.rs
+rust/Cargo.toml
+rust/Cargo.lock
+rust/rust-toolchain.toml
 ```
 
 ソースコードを変更した場合や、その他のファイルだけを変更した場合は自動実行されない。
