@@ -1,8 +1,12 @@
-FROM golang:1.22
+FROM mcr.microsoft.com/devcontainers/go:1.22-bookworm AS build
 
 WORKDIR /workspace
 
-COPY go.mod ./
-RUN go mod download
+FROM debian:bookworm-slim AS runtime
 
-COPY . .
+RUN apt-get update \
+    && apt-get install --no-install-recommends --yes ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY dist/hello_world /usr/local/bin/hello_world
+ENTRYPOINT ["/usr/local/bin/hello_world"]

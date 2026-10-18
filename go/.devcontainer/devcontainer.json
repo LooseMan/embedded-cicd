@@ -2,7 +2,11 @@
 // README at: https://github.com/devcontainers/templates/tree/main/src/go
 {
 	"name": "Go v1.22 (Bookworm)",
-	"image": "mcr.microsoft.com/devcontainers/go:1.22-bookworm",
+	"build": {
+		"dockerfile": "../Containerfile",
+		"context": "..",
+		"target": "build"
+	},
 	"customizations": {
 		"vscode": {
 			"extensions": [
