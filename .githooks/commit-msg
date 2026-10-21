@@ -1,0 +1,39 @@
+#!/bin/sh
+
+set -eu
+
+# VS Code の「コミット メッセージを生成」でも、以下のルールに従う。
+#
+# 1. ステージされた変更内容だけを根拠に、簡潔なメッセージを生成する。
+# 2. 形式は Conventional Commits とする。
+#       <type>(<scope>): <subject>
+#    scope は必要な場合だけ付ける（例: feat(auth): ログイン機能を追加）。
+# 3. type は次のいずれかにする。
+#       feat, fix, docs, style, refactor, test, chore, ci, perf
+# 4. subject は変更内容を表す短い命令形・現在形にし、末尾にピリオドを付けない。
+# 5. 本文や説明は自動生成せず、タイトルだけを出力する。
+# 6. 出力には説明文、Markdown のコードブロック、引用符を含めない。
+#
+# このフックは VS Code の生成処理そのものを設定するものではなく、生成後の
+# コミットメッセージが上記形式になっているかを最後に検証する。
+
+if [ "$#" -lt 1 ] || [ ! -f "$1" ]; then
+    echo "❌ [Commit Rejected] コミットメッセージファイルを読み込めません。" >&2
+    exit 1
+fi
+
+COMMIT_MSG_FILE=$1
+COMMIT_MSG=$(head -n 1 "$COMMIT_MSG_FILE")
+
+# 例: "feat: ログイン機能を追加"、"fix(auth): トークンの期限切れを修正"
+VALID_PATTERN='^(feat|fix|docs|style|refactor|test|chore|ci|perf)(\([^()]+\))?: .+'
+
+if ! printf '%s\n' "$COMMIT_MSG" | grep -Eq "$VALID_PATTERN"; then
+    echo "❌ [Commit Rejected] コミットメッセージの形式が正しくありません。" >&2
+    echo "期待する形式: <type>(<scope>): <subject>" >&2
+    echo "例: feat: ログイン機能を追加" >&2
+    echo "許容される type: feat, fix, docs, style, refactor, test, chore, ci, perf" >&2
+    exit 1
+fi
+
+exit 0
