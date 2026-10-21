@@ -1,5 +1,16 @@
 # embedded-cicd
 
+## 初期設定
+
+Git hooksをルートディレクトリの.githooksディレクトリに格納しています。
+有効化のため、リポジトリをクローン（またはプル）した後、以下のコマンドを実行してください。
+```zsh
+% git config core.hooksPath .githooks
+```
+
+## 開発ルール
+- **コミットメッセージ**: 必ず `feat:`, `fix:`, `chore:` などの Conventional Commits 形式のプレフィックスを付与してください（例: `feat: add terraform tflint`）。Gitフックによって強制されています。
+
 ## コンテナ構成
 
 開発・ビルド環境と、実行時のランタイム環境を分離しています。
