@@ -2,12 +2,18 @@
 // README at: https://github.com/devcontainers/templates/tree/main/src/rust
 {
 	"name": "Rust v1 (Bookworm)",
-	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
 	"build": {
-		"dockerfile": "../Containerfile",
-		"context": "..",
+		"dockerfile": "../../rust/Containerfile",
+		"context": "../..",
 		"target": "build"
 	},
+	"workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}/rust",
+	"runArgs": [
+		"--name",
+		"embedded-cicd-rust",
+		"--network",
+		"embedded-cicd-network"
+	],
 	"customizations": {
 		"vscode": {
 			"extensions": [

@@ -3,10 +3,17 @@
 {
 	"name": "Go v1.22 (Bookworm)",
 	"build": {
-		"dockerfile": "../Containerfile",
-		"context": "..",
+		"dockerfile": "../../go/Containerfile",
+		"context": "../..",
 		"target": "build"
 	},
+	"workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}/go",
+	"runArgs": [
+		"--name",
+		"embedded-cicd-go",
+		"--network",
+		"embedded-cicd-network"
+	],
 	"customizations": {
 		"vscode": {
 			"extensions": [
