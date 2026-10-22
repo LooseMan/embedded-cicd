@@ -1,0 +1,6 @@
+# 新規追加ファイルの作業ツリー形式を検査するルール。
+# 形式: パターン encoding=文字コード eol=改行コード
+# パターンはgitattributesに近く、同じファイルに複数一致した場合は後の行を優先する。
+
+*.bat encoding=SJIS eol=crlf
+*.sh encoding=UTF-8 eol=lf
