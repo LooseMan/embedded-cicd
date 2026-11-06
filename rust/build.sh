@@ -2,10 +2,9 @@
 
 set -euo pipefail
 
-output="${OUTPUT:-hello_world}"
+output="${OUTPUT:-api_server}"
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$script_dir"
 
-docker run --rm \
-    --mount "type=bind,source=$(pwd),target=/workspace" \
-    embedded-cicd-rust \
-    env OUTPUT="$output" \
-    sh -c 'cargo build --release && cp target/release/hello "$OUTPUT"'
+cargo build --release
+cp target/release/api_server "$output"

@@ -12,19 +12,21 @@ Git hooksをルートディレクトリの.githooksディレクトリに格納�
 
 ## コンテナ構成
 
-開発・ビルド環境と、実行時のランタイム環境を分離しています。
+開発環境、ビルド環境、実行時のランタイム環境を分離しています。
 
-- 開発・ビルド環境: Microsoft の devcontainer image
+- 開発環境: Microsoft の devcontainer image
+- Go ビルド環境: `golang:1.22-alpine`（CGO を無効にして軽量化）
+- Rust ビルド環境: `rust:1.89-slim-bookworm`
 - リリース環境: `debian:bookworm-slim` と実行に必要なライブラリ、バイナリ
 
 各 `Containerfile` は2ステージ構成です。
 
 ```text
-build   MS devcontainer image。ソースは実行時にマウントする
+build   各言語のビルド image。ソースは実行時にマウントする
 runtime 事前に生成したバイナリと動的ライブラリだけを含むリリース image
 ```
 
-`devcontainer.json` は `build` target を使います。`build` stage はソースを同梱せず、開発時にワークスペースをマウントして使います。
+Go の `build` stage は `golang:1.22-alpine` を使用し、`CGO_ENABLED=0` でビルドします。Rust の `build` stage は `rust:1.89-slim-bookworm` を使用します（プロジェクトの `rust-toolchain.toml` に合わせたバージョンです）。開発用コンテナは `.devcontainer` の設定で別途選択します。`build` stage はソースを同梱せず、ビルド時にワークスペースをマウントして使います。
 
 本リポジトリは、プロジェクト直下に複数のプロジェクトを並べて管理するモノレポ構成を想定しています。そのため、開発コンテナの設定はルートの `.devcontainer` 配下にプロジェクト単位で配置しています。
 

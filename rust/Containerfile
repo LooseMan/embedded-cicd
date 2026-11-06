@@ -1,6 +1,9 @@
-FROM mcr.microsoft.com/devcontainers/rust:1-bookworm AS build
+FROM rust:1.96-slim-bookworm AS build
 
 WORKDIR /workspace
+COPY Cargo.toml Cargo.lock rust-toolchain.toml build.sh ./
+COPY src ./src
+RUN ./build.sh
 
 FROM debian:bookworm-slim AS runtime
 
@@ -8,5 +11,5 @@ RUN apt-get update \
     && apt-get install --no-install-recommends --yes ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-COPY dist/hello_world /usr/local/bin/hello_world
-ENTRYPOINT ["/usr/local/bin/hello_world"]
+COPY --from=build /workspace/api_server /usr/local/bin/api_server
+ENTRYPOINT ["/bin/bash"]

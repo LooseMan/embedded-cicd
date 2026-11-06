@@ -1,12 +1,20 @@
-FROM mcr.microsoft.com/devcontainers/go:1.22-bookworm AS build
+FROM golang:1.22-bookworm AS build
 
 WORKDIR /workspace
+ARG CGO_ENABLED=0
+ENV CGO_ENABLED=${CGO_ENABLED}
+# CGO_ENABLED=1 に切り替えた場合もビルドできるようにする。
+RUN apt-get update \
+    && apt-get install --no-install-recommends --yes build-essential \
+    && rm -rf /var/lib/apt/lists/*
+COPY go.mod main.go build.sh ./
+RUN ./build.sh
 
 FROM debian:bookworm-slim AS runtime
 
+# HTTPS 接続と、将来の CGO/glibc 系拡張に備える。
 RUN apt-get update \
     && apt-get install --no-install-recommends --yes ca-certificates \
     && rm -rf /var/lib/apt/lists/*
-
-COPY dist/hello_world /usr/local/bin/hello_world
-ENTRYPOINT ["/usr/local/bin/hello_world"]
+COPY --from=build /workspace/api_client /usr/local/bin/api_client
+ENTRYPOINT ["/bin/bash"]
