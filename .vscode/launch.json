@@ -1,0 +1,23 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Rust daemon: Attach",
+            "type": "lldb",
+            "request": "attach",
+            "pid": "${input:rustDaemonPid}",
+            "stopOnEntry": false,
+            "sourceLanguages": [
+                "rust"
+            ]
+        }
+    ],
+    "inputs": [
+        {
+            "id": "rustDaemonPid",
+            "type": "promptString",
+            "description": "hdlctl.sh が表示したRustデーモンのPID",
+            "default": ""
+        }
+    ]
+}
