@@ -2,8 +2,7 @@
 
 ## 初期設定
 
-Git hooksをルートディレクトリの.githooksディレクトリに格納しています。
-有効化のため、リポジトリをクローン（またはプル）した後、以下のコマンドを実行してください。
+Git hooksをルートディレクトリの.githooksディレクトリに格納しています。有効化のため、リポジトリをクローン（またはプル）した後、以下のコマンドを実行してください。
 ```zsh
 % git config core.hooksPath .githooks
 ```
@@ -26,6 +25,16 @@ runtime 事前に生成したバイナリと動的ライブラリだけを含む
 ```
 
 `devcontainer.json` は `build` target を使います。`build` stage はソースを同梱せず、開発時にワークスペースをマウントして使います。
+
+本リポジトリは、プロジェクト直下に複数のプロジェクトを並べて管理するモノレポ構成を想定しています。そのため、開発コンテナの設定はルートの `.devcontainer` 配下にプロジェクト単位で配置しています。
+
+```text
+.devcontainer/
+├── go/devcontainer.json
+└── rust/devcontainer.json
+```
+
+プロジェクトを追加する場合も同じ構成で設定を追加でき、Go 用・Rust 用など、作業対象に応じた `devcontainer.json` を選択して開発できます。各設定はリポジトリルートをワークスペースとしてマウントし、対象プロジェクトのディレクトリを開く構成です。これにより、プロジェクトごとの `Containerfile` と開発環境の設定を近接させながら、モノレポ全体の管理場所を統一しています。
 
 runtime image を作るときは、先に `dist/hello_world` を生成します。その後の `docker build` は最後の `runtime` stage を生成します。
 
