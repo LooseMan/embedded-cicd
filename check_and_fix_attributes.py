@@ -1,20 +1,25 @@
 #!/usr/bin/env python3
-""".gitattributesの文字コードと改行指定を検査し、確認後に修正する。"""
+"""新規追加ファイルの文字コードと改行ルールを検査し、確認後に修正する。"""
 
 from __future__ import annotations
 
 import argparse
 import codecs
+import fnmatch
 import os
+import shlex
 import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 
 
+RULES_FILE = ".file-format-rules"
+
+
 @dataclass(frozen=True)
 class FileAttributes:
-    """1ファイルに対してGitが返した属性。"""
+    """1ファイルに適用する文字コードと改行形式。"""
 
     encoding: str | None
     eol: str | None
@@ -53,7 +58,7 @@ def repository_root() -> Path:
     return Path(str(root).strip()).resolve()
 
 
-def existing_files(root: Path, requested: list[str]) -> list[Path]:
+def existing_files(root: Path, requested: list[str], changed: bool = False) -> list[Path]:
     """指定ファイル、または追跡済み・未追跡（無視対象を除く）を列挙する。"""
     if requested:
         paths: set[Path] = set()
@@ -76,6 +81,19 @@ def existing_files(root: Path, requested: list[str]) -> list[Path]:
                 raise RuntimeError(f"ファイルまたはディレクトリが見つかりません: {value}")
         return sorted(paths)
 
+    if changed:
+        output = run_git(
+            "diff", "--cached", "--name-only", "--diff-filter=ACMR", "-z", cwd=root, text=False
+        )
+        paths = []
+        for raw_path in bytes(output).split(b"\0"):
+            if not raw_path:
+                continue
+            path = root / os.fsdecode(raw_path)
+            if path.is_file():
+                paths.append(path)
+        return paths
+
     output = run_git(
         "ls-files", "--cached", "--others", "--exclude-standard", "-z", cwd=root, text=False
     )
@@ -89,25 +107,60 @@ def existing_files(root: Path, requested: list[str]) -> list[Path]:
     return paths
 
 
-def attribute_value(root: Path, path: Path) -> FileAttributes:
-    """Gitの実効属性を取得する。通常のglob解釈はGitに任せる。"""
+def load_rules(root: Path) -> list[tuple[str, FileAttributes]]:
+    """独立したルールファイルを読み込む。後勝ちでgitattributesに近い動作にする。"""
+    rules_path = root / RULES_FILE
+    if not rules_path.is_file():
+        return []
+
+    rules: list[tuple[str, FileAttributes]] = []
+    for line_number, line in enumerate(rules_path.read_text(encoding="utf-8").splitlines(), 1):
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        try:
+            fields = shlex.split(stripped, comments=True)
+        except ValueError as error:
+            raise ValueError(f"{rules_path}:{line_number}: ルールを解釈できません: {error}") from error
+        if len(fields) < 2:
+            raise ValueError(f"{rules_path}:{line_number}: パターンと属性を指定してください")
+
+        values: dict[str, str] = {}
+        for field in fields[1:]:
+            try:
+                name, value = field.split("=", 1)
+            except ValueError:
+                raise ValueError(f"{rules_path}:{line_number}: 属性は name=value 形式で指定してください") from None
+            if name not in {"encoding", "eol"} or not value:
+                raise ValueError(f"{rules_path}:{line_number}: 未対応の属性です: {name}")
+            values[name] = value
+        if not values:
+            raise ValueError(f"{rules_path}:{line_number}: encoding または eol が必要です")
+        rules.append((fields[0], FileAttributes(values.get("encoding"), values.get("eol"))))
+    return rules
+
+
+def rule_value(root: Path, path: Path, rules: list[tuple[str, FileAttributes]]) -> FileAttributes:
+    """ルールファイルのパターンに一致する最後のルールを返す。"""
     relative = path.relative_to(root).as_posix()
-    output = str(run_git("check-attr", "working-tree-encoding", "eol", "--", relative, cwd=root))
-    values: dict[str, str] = {}
-    for line in output.splitlines():
-        _, name, value = line.rsplit(": ", 2)
-        values[name] = value
-
-    def configured(name: str) -> str | None:
-        value = values.get(name)
-        return None if value in (None, "unspecified", "unset") else value
-
-    return FileAttributes(configured("working-tree-encoding"), configured("eol"))
+    matched = FileAttributes(None, None)
+    for pattern, attributes in rules:
+        normalized = pattern.removeprefix("/")
+        if fnmatch.fnmatchcase(relative, normalized) or (
+            "/" not in normalized and fnmatch.fnmatchcase(path.name, normalized)
+        ):
+            matched = attributes
+    return matched
 
 
 def codec_name(name: str) -> str:
     """Git属性名をPythonのcodec名に変換し、利用可能か確認する。"""
-    aliases = {"cp932": "cp932", "shift-jis": "cp932", "shift_jis": "cp932"}
+    aliases = {
+        "cp932": "cp932",
+        "sjis": "cp932",
+        "shift-jis": "cp932",
+        "shift_jis": "cp932",
+    }
     normalized = aliases.get(name.lower(), name)
     try:
         return codecs.lookup(normalized).name
@@ -119,12 +172,58 @@ def eol_problem(data: bytes, expected: str | None) -> str | None:
     """指定された改行形式に適合しているか確認する。"""
     if expected not in ("lf", "crlf"):
         return None
-    if expected == "lf":
-        if b"\r" in data:
-            return "LF指定ですがCRを含んでいます"
-    elif b"\n" in data.replace(b"\r\n", b"") or b"\r" in data.replace(b"\r\n", b""):
-        return "CRLF指定ですが単独の改行コードを含んでいます"
-    return None
+    current = eol_name(data)
+    expected_name = expected.upper()
+    return None if current == expected_name else f"改行: 期待 {expected_name} / 現在 {current}"
+
+
+def eol_name(data: bytes) -> str:
+    """バイト列の改行形式を表示用の名前で返す。"""
+    has_crlf = b"\r\n" in data
+    has_lf = b"\n" in data.replace(b"\r\n", b"")
+    has_cr = b"\r" in data.replace(b"\r\n", b"")
+    kinds = sum((has_crlf, has_lf, has_cr))
+    if kinds == 0:
+        return "なし"
+    if kinds > 1:
+        return "混在"
+    if has_crlf:
+        return "CRLF"
+    if has_lf:
+        return "LF"
+    return "CR"
+
+
+def detected_encoding(data: bytes, expected: str) -> str:
+    """期待値以外の代表的な文字コードで現在値を推定する。"""
+    euc_score = 0
+    sjis_score = 0
+    for index, value in enumerate(data[:-1]):
+        following = data[index + 1]
+        if 0xA1 <= value <= 0xFE and 0xA1 <= following <= 0xFE:
+            euc_score += 1
+        if (0x81 <= value <= 0x9F or 0xE0 <= value <= 0xFC) and (
+            0x40 <= following <= 0x7E or 0x80 <= following <= 0xFC
+        ):
+            sjis_score += 1
+    if euc_score > sjis_score and euc_score:
+        return "EUC-JP"
+    if sjis_score > euc_score and sjis_score:
+        return "SJIS"
+
+    candidates = [expected, "utf-8-sig", "utf-8", "cp932", "euc_jp"]
+    for candidate in dict.fromkeys(candidates):
+        try:
+            data.decode(codec_name(candidate))
+        except (UnicodeDecodeError, ValueError):
+            continue
+        return (
+            candidate.upper()
+            .replace("UTF-8-SIG", "UTF-8(BOM)")
+            .replace("CP932", "SJIS")
+            .replace("EUC_JP", "EUC-JP")
+        )
+    return "判定不能"
 
 
 def inspect_file(path: Path, attributes: FileAttributes) -> Problem | None:
@@ -136,7 +235,8 @@ def inspect_file(path: Path, attributes: FileAttributes) -> Problem | None:
         try:
             data.decode(codec_name(attributes.encoding))
         except (UnicodeDecodeError, ValueError) as error:
-            reasons.append(f"文字コード不一致（{attributes.encoding}: {error}）")
+            current = detected_encoding(data, attributes.encoding)
+            reasons.append(f"エンコード: 期待 {attributes.encoding} / 現在 {current}")
 
     line_reason = eol_problem(data, attributes.eol)
     if line_reason:
@@ -187,7 +287,7 @@ def fix_file(problem: Problem) -> None:
 def parse_arguments() -> argparse.Namespace:
     """コマンドライン引数を解析する。"""
     parser = argparse.ArgumentParser(
-        description="指定したファイルセット、またはリポジトリ全体の属性を検査します。"
+        description="指定したファイルセット、またはリポジトリ全体の形式ルールを検査します。"
     )
     parser.add_argument(
         "paths",
@@ -199,6 +299,11 @@ def parse_arguments() -> argparse.Namespace:
         action="store_true",
         help="不一致を表示するだけで、修正確認を行わない",
     )
+    parser.add_argument(
+        "--changed",
+        action="store_true",
+        help="コミットに追加・変更されたファイルだけを検査する",
+    )
     return parser.parse_args()
 
 
@@ -209,8 +314,9 @@ def main() -> int:
         root = repository_root()
         problems: list[Problem] = []
         checked = 0
-        for path in existing_files(root, args.paths):
-            attributes = attribute_value(root, path)
+        rules = load_rules(root)
+        for path in existing_files(root, args.paths, args.changed):
+            attributes = rule_value(root, path, rules)
             if not attributes.encoding and not attributes.eol:
                 continue
             checked += 1
