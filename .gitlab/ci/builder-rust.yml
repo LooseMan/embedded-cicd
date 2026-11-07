@@ -2,7 +2,7 @@ build-rust-builder:
   stage: build
   script:
     - IMAGE="$CI_REGISTRY_IMAGE/rust-builder:latest"
-    - docker build --pull --file rust/Containerfile --tag "$IMAGE" rust
+    - docker build --pull --target build --file rust/Containerfile --tag "$IMAGE" rust
     - docker push "$IMAGE"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "web"'
@@ -14,3 +14,4 @@ build-rust-builder:
         - .gitlab/ci/builder-rust.yml
         - .github/workflows/builder-rust.yml
         - rust/Containerfile
+        - rust/build.sh

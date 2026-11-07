@@ -1,13 +1,12 @@
 build-go:
   stage: build
   script:
-    - mkdir -p go/dist
     - IMAGE="$CI_REGISTRY_IMAGE/go-builder:latest"
-    - docker run --rm --mount "type=bind,source=$CI_PROJECT_DIR/go,target=/workspace" "$IMAGE" go build -o /workspace/dist/hello_world .
+    - docker run --rm --mount "type=bind,source=$CI_PROJECT_DIR/go,target=/workspace" "$IMAGE" /workspace/build.sh
   artifacts:
     name: go-binary
     paths:
-      - go/dist/hello_world
+      - go/api_client
     expire_in: 90 days
   rules:
     - if: '$CI_PIPELINE_SOURCE == "web"'
@@ -21,3 +20,4 @@ build-go:
         - go/**/*.go
         - go/go.mod
         - go/go.sum
+        - go/build.sh
