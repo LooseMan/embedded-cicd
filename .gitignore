@@ -13,3 +13,7 @@
 /output/
 /encoding-survey.zip
 /py.tar.gz
+go/api_client
+rust/api_server
+rust/openapi.json
+rust/設計メモ.md

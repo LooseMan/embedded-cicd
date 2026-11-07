@@ -8,3 +8,4 @@ cd "$script_dir"
 
 cargo build --release
 cp target/release/api_server "$output"
+cargo run --bin generate_openapi --quiet

@@ -1,29 +1,12 @@
-use axum::{extract::Json, http::StatusCode, routing::post, Router};
-use serde::{Deserialize, Serialize};
-
-#[derive(Debug, Deserialize)]
-struct AddRequest {
-    a: i64,
-    b: i64,
-}
-
-#[derive(Debug, Serialize)]
-struct AddResponse {
-    result: i64,
-}
-
-async fn add(Json(request): Json<AddRequest>) -> (StatusCode, Json<AddResponse>) {
-    (
-        StatusCode::OK,
-        Json(AddResponse {
-            result: request.a + request.b,
-        }),
-    )
-}
+use api_server::api_router;
+use axum::{extract::Json, routing::get, Router};
 
 #[tokio::main]
 async fn main() {
-    let app = Router::new().route("/add", post(add));
+    let (api_router, openapi) = api_router().split_for_parts();
+    let app = api_router.merge(
+        Router::new().route("/openapi.json", get(|| async { Json(openapi) })),
+    );
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000")
         .await
         .expect("failed to bind server to 0.0.0.0:3000");

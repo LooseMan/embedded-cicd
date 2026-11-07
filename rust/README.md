@@ -31,6 +31,10 @@
 ```bash
 ./rust/build.sh
 # api_server が生成される
+# rust/openapi.json も生成される
+
+# OpenAPI定義だけを生成
+cargo run --manifest-path rust/Cargo.toml --bin generate_openapi
 ```
 
 コンテナイメージのビルド時も、ビルドステージから同じ `build.sh` を実行します。実行ステージは `debian:bookworm-slim` で、エントリーポイントは Bash です。
