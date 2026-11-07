@@ -15,18 +15,18 @@ Git hooksをルートディレクトリの.githooksディレクトリに格納�
 開発環境、ビルド環境、実行時のランタイム環境を分離しています。
 
 - 開発環境: Microsoft の devcontainer image
-- Go ビルド環境: `golang:1.22-alpine`（CGO を無効にして軽量化）
-- Rust ビルド環境: `rust:1.89-slim-bookworm`
+- Go ビルド環境: `golang:1.22-bookworm`
+- Rust ビルド環境: `rust:1.96-slim-bookworm`
 - リリース環境: `debian:bookworm-slim` と実行に必要なライブラリ、バイナリ
 
 各 `Containerfile` は2ステージ構成です。
 
 ```text
-build   各言語のビルド image。ソースは実行時にマウントする
-runtime 事前に生成したバイナリと動的ライブラリだけを含むリリース image
+build   各言語のビルド image。build.sh でバイナリを生成する
+runtime 生成済みバイナリと実行時に必要なパッケージだけを含むリリース image
 ```
 
-Go の `build` stage は `golang:1.22-alpine` を使用し、`CGO_ENABLED=0` でビルドします。Rust の `build` stage は `rust:1.89-slim-bookworm` を使用します（プロジェクトの `rust-toolchain.toml` に合わせたバージョンです）。開発用コンテナは `.devcontainer` の設定で別途選択します。`build` stage はソースを同梱せず、ビルド時にワークスペースをマウントして使います。
+Go の `build` stage は `golang:1.22-bookworm`、Rust の `build` stage は `rust:1.96-slim-bookworm` を使用します。各 `build` stage は対応する `build.sh` を実行してバイナリを生成します。開発用コンテナは `.devcontainer` の設定で別途選択します。
 
 本リポジトリは、プロジェクト直下に複数のプロジェクトを並べて管理するモノレポ構成を想定しています。そのため、開発コンテナの設定はルートの `.devcontainer` 配下にプロジェクト単位で配置しています。
 
@@ -38,30 +38,22 @@ Go の `build` stage は `golang:1.22-alpine` を使用し、`CGO_ENABLED=0` で
 
 プロジェクトを追加する場合も同じ構成で設定を追加でき、Go 用・Rust 用など、作業対象に応じた `devcontainer.json` を選択して開発できます。各設定はリポジトリルートをワークスペースとしてマウントし、対象プロジェクトのディレクトリを開く構成です。これにより、プロジェクトごとの `Containerfile` と開発環境の設定を近接させながら、モノレポ全体の管理場所を統一しています。
 
-runtime image を作るときは、先に `dist/hello_world` を生成します。その後の `docker build` は最後の `runtime` stage を生成します。
+各 `Containerfile` は、ビルドステージで `build.sh` を実行した後、生成されたバイナリを `debian:bookworm-slim` の runtime stage にコピーします。runtime のエントリーポイントは Bash です。
 
 ```sh
-# Go のビルド環境を作成してバイナリを生成
-docker build --target build -f go/Containerfile -t go-build:latest go
-mkdir -p go/dist
-docker run --rm --user root \
-  --mount "type=bind,source=$PWD/go,target=/workspace" \
-  go-build:latest \
-  go build -o /workspace/dist/hello_world .
+# Go のローカルビルド
+./go/build.sh
 
 # Go のリリース image
 docker build -f go/Containerfile -t go-runtime:latest go
 
-# Rust も同様に、build stage でバイナリを生成してから runtime image を作る
-docker build --target build -f rust/Containerfile -t rust-build:latest rust
-mkdir -p rust/dist
-docker run --rm --user root \
-  --mount "type=bind,source=$PWD/rust,target=/workspace" \
-  rust-build:latest \
-  sh -c 'cargo build --release && cp target/release/hello /workspace/dist/hello_world'
+# Rust のローカルビルド
+./rust/build.sh
+
+# Rust のリリース image
 docker build -f rust/Containerfile -t rust-runtime:latest rust
 ```
 
-GitHub Actions の `build-go.yml` と `build-rust.yml` は `build` target のコンテナにソースをマウントしてバイナリを生成し、Artifact に保存します。`builder-go.yml` と `builder-rust.yml` は同じ手順で `dist/hello_world` を作成した後、デフォルトの `runtime` image を GHCR に push します。
+GitHub Actions や GitLab CI からも、各プロジェクトの `build.sh` を利用してバイナリと runtime image を生成します。
 
 外部ライブラリが動的リンクされる場合は、対応する実行時パッケージを各 `Containerfile` の `runtime` stage に追加してください。
