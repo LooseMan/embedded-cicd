@@ -9,7 +9,7 @@ on:
       - 'go/Containerfile'
       - 'go/**/*.go'
       - 'go/go.mod'
-      - 'go/go.sum'
+      - 'go/build.sh'
   workflow_dispatch:
 
 permissions:
@@ -36,22 +36,6 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build Go binary
-        env:
-          IMAGE: embedded-cicd-go-build:ci
-        run: |
-          mkdir -p go/dist
-          docker build \
-            --file go/Containerfile \
-            --target build \
-            --tag "$IMAGE" \
-            go
-          docker run --rm \
-            --user root \
-            --mount "type=bind,source=${GITHUB_WORKSPACE}/go,target=/workspace" \
-            "$IMAGE" \
-            go build -o /workspace/dist/hello_world .
 
       - name: Build and push
         uses: docker/build-push-action@v7

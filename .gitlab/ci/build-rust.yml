@@ -1,13 +1,12 @@
 build-rust:
   stage: build
   script:
-    - mkdir -p rust/dist
     - IMAGE="$CI_REGISTRY_IMAGE/rust-builder:latest"
-    - docker run --rm --mount "type=bind,source=$CI_PROJECT_DIR/rust,target=/workspace" "$IMAGE" sh -c 'cargo build --release && cp target/release/hello /workspace/dist/hello_world'
+    - docker run --rm --mount "type=bind,source=$CI_PROJECT_DIR/rust,target=/workspace" "$IMAGE" /workspace/build.sh
   artifacts:
     name: rust-binary
     paths:
-      - rust/dist/hello_world
+      - rust/api_server
     expire_in: 90 days
   rules:
     - if: '$CI_PIPELINE_SOURCE == "web"'
@@ -22,3 +21,4 @@ build-rust:
         - rust/Cargo.toml
         - rust/Cargo.lock
         - rust/rust-toolchain.toml
+        - rust/build.sh

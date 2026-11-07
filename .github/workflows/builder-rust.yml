@@ -11,6 +11,7 @@ on:
       - 'rust/Cargo.toml'
       - 'rust/Cargo.lock'
       - 'rust/rust-toolchain.toml'
+      - 'rust/build.sh'
   workflow_dispatch:
 
 permissions:
@@ -37,22 +38,6 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build Rust binary
-        env:
-          IMAGE: embedded-cicd-rust-build:ci
-        run: |
-          mkdir -p rust/dist
-          docker build \
-            --file rust/Containerfile \
-            --target build \
-            --tag "$IMAGE" \
-            rust
-          docker run --rm \
-            --user root \
-            --mount "type=bind,source=${GITHUB_WORKSPACE}/rust,target=/workspace" \
-            "$IMAGE" \
-            sh -c 'cargo build --release && cp target/release/hello /workspace/dist/hello_world'
 
       - name: Build and push
         uses: docker/build-push-action@v7

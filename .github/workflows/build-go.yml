@@ -9,7 +9,7 @@ on:
       - 'go/Containerfile'
       - 'go/**/*.go'
       - 'go/go.mod'
-      - 'go/go.sum'
+      - 'go/build.sh'
   workflow_dispatch:
 
 permissions:
@@ -37,11 +37,11 @@ jobs:
             --user root \
             --mount "type=bind,source=${GITHUB_WORKSPACE}/go,target=/workspace" \
             "$IMAGE" \
-            go build -o /workspace/dist/hello_world .
+            sh -c 'OUTPUT=/workspace/dist/api_client ./build.sh'
 
       - name: Upload Go binary
         uses: actions/upload-artifact@v6
         with:
           name: go-binary
-          path: go/dist/hello_world
+          path: go/dist/api_client
           if-no-files-found: error

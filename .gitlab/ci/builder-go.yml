@@ -2,7 +2,7 @@ build-go-builder:
   stage: build
   script:
     - IMAGE="$CI_REGISTRY_IMAGE/go-builder:latest"
-    - docker build --pull --file go/Containerfile --tag "$IMAGE" go
+    - docker build --pull --target build --file go/Containerfile --tag "$IMAGE" go
     - docker push "$IMAGE"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "web"'
@@ -14,3 +14,4 @@ build-go-builder:
         - .gitlab/ci/builder-go.yml
         - .github/workflows/builder-go.yml
         - go/Containerfile
+        - go/build.sh
