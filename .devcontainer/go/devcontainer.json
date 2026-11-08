@@ -9,5 +9,8 @@
 		"embedded-cicd-go"
 		// "--network",
 		// "embedded-cicd-network"
-	]
+	],
+	"containerEnv": {
+        "GOTOOLCHAIN": "local"
+    }
 }
