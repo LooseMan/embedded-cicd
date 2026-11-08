@@ -19,11 +19,12 @@ Git hooksをルートディレクトリの.githooksディレクトリに格納�
 - Rust ビルド環境: `rust:1.96-slim-bookworm`
 - リリース環境: `debian:bookworm-slim` と実行に必要なライブラリ、バイナリ
 
-各 `Containerfile` は2ステージ構成です。
+各 `Containerfile` は、開発用ビルド環境、リリース用ビルド、runtime の3ステージ構成です。
 
 ```text
-build   各言語のビルド image。build.sh でバイナリを生成する
-runtime 生成済みバイナリと実行時に必要なパッケージだけを含むリリース image
+build         各言語の開発用ビルド image。ソースをマウントして必要なときに build.sh を実行する
+release-build ソースを含めて runtime 用バイナリを生成する image
+runtime       生成済みバイナリと実行時に必要なパッケージだけを含むリリース image
 ```
 
 Go の `build` stage は `golang:1.22-bookworm`、Rust の `build` stage は `rust:1.96-slim-bookworm` を使用します。各 `build` stage は対応する `build.sh` を実行してバイナリを生成します。開発用コンテナは `.devcontainer` の設定で別途選択します。
@@ -38,7 +39,7 @@ Go の `build` stage は `golang:1.22-bookworm`、Rust の `build` stage は `ru
 
 プロジェクトを追加する場合も同じ構成で設定を追加でき、Go 用・Rust 用など、作業対象に応じた `devcontainer.json` を選択して開発できます。各設定はリポジトリルートをワークスペースとしてマウントし、対象プロジェクトのディレクトリを開く構成です。これにより、プロジェクトごとの `Containerfile` と開発環境の設定を近接させながら、モノレポ全体の管理場所を統一しています。
 
-各 `Containerfile` は、ビルドステージで `build.sh` を実行した後、生成されたバイナリを `debian:bookworm-slim` の runtime stage にコピーします。runtime のエントリーポイントは Bash です。
+開発用の `build` stage はソースを含まず、devcontainer 相当のビルド環境として利用します。ソースを `/workspace` にマウントして、必要なときに `build.sh` を実行します。通常のイメージビルドでは `release-build` stage がソースを取り込み、`build.sh` で生成したバイナリを `debian:bookworm-slim` の runtime stage にコピーします。runtime のエントリーポイントは Bash です。
 
 ```sh
 # Go のローカルビルド

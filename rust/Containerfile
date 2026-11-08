@@ -1,6 +1,12 @@
 FROM rust:1.96-slim-bookworm AS build
 
 WORKDIR /workspace
+
+# 開発用ビルド環境。ソースは実行時に /workspace へマウントし、
+# 必要なときに build.sh を実行する。
+
+FROM build AS release-build
+
 COPY Cargo.toml Cargo.lock rust-toolchain.toml build.sh ./
 COPY src ./src
 RUN ./build.sh
@@ -11,5 +17,5 @@ RUN apt-get update \
     && apt-get install --no-install-recommends --yes ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=build /workspace/api_server /usr/local/bin/api_server
+COPY --from=release-build /workspace/api_server /usr/local/bin/api_server
 ENTRYPOINT ["/bin/bash"]

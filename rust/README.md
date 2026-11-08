@@ -37,7 +37,7 @@
 cargo run --manifest-path rust/Cargo.toml --bin generate_openapi
 ```
 
-コンテナイメージのビルド時も、ビルドステージから同じ `build.sh` を実行します。実行ステージは `debian:bookworm-slim` で、エントリーポイントは Bash です。
+コンテナイメージのビルド時は、`release-build` stage がソースを取り込み、同じ `build.sh` を実行します。`build` stage はソースを含まない開発用ビルド環境で、ソースを `/workspace` にマウントして必要なときに利用します。実行ステージは `debian:bookworm-slim` で、エントリーポイントは Bash です。
 
 第1引数に基底名を指定すると、`-handler` を付加した名前がCargoのバイナリ名・プロセス名・コンテナ名として使われます。
 

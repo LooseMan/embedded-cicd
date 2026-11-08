@@ -8,6 +8,12 @@ ENV CGO_ENABLED=${CGO_ENABLED} \
 RUN apt-get update \
     && apt-get install --no-install-recommends --yes build-essential \
     && rm -rf /var/lib/apt/lists/*
+
+# 開発用ビルド環境。ソースは実行時に /workspace へマウントし、
+# 必要なときに build.sh を実行する。
+
+FROM build AS release-build
+
 COPY go.mod main.go build.sh ./
 RUN ./build.sh
 
@@ -17,5 +23,5 @@ FROM debian:bookworm-slim AS runtime
 RUN apt-get update \
     && apt-get install --no-install-recommends --yes ca-certificates \
     && rm -rf /var/lib/apt/lists/*
-COPY --from=build /workspace/api_client /usr/local/bin/api_client
+COPY --from=release-build /workspace/api_client /usr/local/bin/api_client
 ENTRYPOINT ["/bin/bash"]
