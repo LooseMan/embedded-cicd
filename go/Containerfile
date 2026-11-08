@@ -2,7 +2,8 @@ FROM golang:1.22-bookworm AS build
 
 WORKDIR /workspace
 ARG CGO_ENABLED=0
-ENV CGO_ENABLED=${CGO_ENABLED}
+ENV CGO_ENABLED=${CGO_ENABLED} \
+    GOTOOLCHAIN=local
 # CGO_ENABLED=1 に切り替えた場合もビルドできるようにする。
 RUN apt-get update \
     && apt-get install --no-install-recommends --yes build-essential \
