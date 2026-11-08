@@ -1,4 +1,4 @@
-name: Build and Push Rust Runtime Image
+name: Build and Push Rust Builder Image
 
 on:
   push:
@@ -20,7 +20,7 @@ permissions:
 
 jobs:
   build:
-    name: Rust Runtime
+    name: Rust Builder
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -44,5 +44,6 @@ jobs:
         with:
           context: ./rust
           file: ./rust/Containerfile
+          target: build
           push: true
-          tags: ${{ steps.image.outputs.namespace }}/rust-runtime:latest
+          tags: ${{ steps.image.outputs.namespace }}/rust-builder:latest

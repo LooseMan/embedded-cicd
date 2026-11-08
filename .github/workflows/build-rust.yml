@@ -1,4 +1,4 @@
-name: Build Rust Binary
+name: Build and Push Rust Runtime Image
 
 on:
   push:
@@ -16,34 +16,33 @@ on:
 
 permissions:
   contents: read
+  packages: write
 
 jobs:
   build:
-    name: Build Rust Binary
+    name: Rust Runtime
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Build Rust binary in builder container
+      - name: Normalize image namespace
+        id: image
         env:
-          IMAGE: embedded-cicd-rust-build:ci
-        run: |
-          mkdir -p rust/dist
-          docker build \
-            --file rust/Containerfile \
-            --target build \
-            --tag "$IMAGE" \
-            rust
-          docker run --rm \
-            --user root \
-            --mount "type=bind,source=${GITHUB_WORKSPACE}/rust,target=/workspace" \
-            "$IMAGE" \
-            sh -c 'OUTPUT=/workspace/dist/api_server ./build.sh'
+          OWNER: ${{ github.repository_owner }}
+        run: echo "namespace=ghcr.io/${OWNER,,}" >> "$GITHUB_OUTPUT"
 
-      - name: Upload Rust binary
-        uses: actions/upload-artifact@v6
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
         with:
-          name: rust-binary
-          path: rust/dist/api_server
-          if-no-files-found: error
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: ./rust
+          file: ./rust/Containerfile
+          push: true
+          tags: ${{ steps.image.outputs.namespace }}/rust-runtime:latest

@@ -1,4 +1,4 @@
-name: Build Go Binary
+name: Build and Push Go Runtime Image
 
 on:
   push:
@@ -14,34 +14,33 @@ on:
 
 permissions:
   contents: read
+  packages: write
 
 jobs:
   build:
-    name: Build Go Binary
+    name: Go Runtime
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Build Go binary in builder container
+      - name: Normalize image namespace
+        id: image
         env:
-          IMAGE: embedded-cicd-go-build:ci
-        run: |
-          mkdir -p go/dist
-          docker build \
-            --file go/Containerfile \
-            --target build \
-            --tag "$IMAGE" \
-            go
-          docker run --rm \
-            --user root \
-            --mount "type=bind,source=${GITHUB_WORKSPACE}/go,target=/workspace" \
-            "$IMAGE" \
-            sh -c 'OUTPUT=/workspace/dist/api_client ./build.sh'
+          OWNER: ${{ github.repository_owner }}
+        run: echo "namespace=ghcr.io/${OWNER,,}" >> "$GITHUB_OUTPUT"
 
-      - name: Upload Go binary
-        uses: actions/upload-artifact@v6
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
         with:
-          name: go-binary
-          path: go/dist/api_client
-          if-no-files-found: error
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: ./go
+          file: ./go/Containerfile
+          push: true
+          tags: ${{ steps.image.outputs.namespace }}/go-runtime:latest

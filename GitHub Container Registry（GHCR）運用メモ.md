@@ -13,6 +13,8 @@ ghcr.io/<OWNER>/<IMAGE_NAME>:<TAG>
 例えば、GitHub ユーザーが `LooseMan`、リポジトリ名が `embedded-cicd` の場合は、次のようになる。
 
 ```text
+ghcr.io/looseman/go-builder:latest
+ghcr.io/looseman/rust-builder:latest
 ghcr.io/looseman/go-runtime:latest
 ghcr.io/looseman/rust-runtime:latest
 ```
@@ -121,6 +123,8 @@ on:
 リポジトリ名を `embedded-cicd` とする場合、GHCR のパッケージ名は次のようにする。
 
 ```text
+go-builder
+rust-builder
 go-runtime
 rust-runtime
 ```
@@ -134,17 +138,18 @@ embedded-cicd-rust-runtime
 
 ## ランタイムイメージの更新条件
 
-ランタイムイメージは、ビルド環境またはアプリケーションの変更時に再ビルドする。
+ビルダーイメージとランタイムイメージは、ビルド環境またはアプリケーションの変更時に再ビルドする。
 次のファイルが `main` ブランチへ push された場合に自動ビルドする。
 
 ```text
+.github/workflows/build-go.yml
+.github/workflows/build-rust.yml
 .github/workflows/builder-go.yml
 .github/workflows/builder-rust.yml
 go/Containerfile
 rust/Containerfile
 go/**/*.go
 go/go.mod
-go/go.sum
 rust/**/*.rs
 rust/Cargo.toml
 rust/Cargo.lock
