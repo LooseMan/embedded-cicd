@@ -1,0 +1,20 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/rust
+{
+	"name": "embedded-cicd-dev(Bookworm)",
+	"image": "mcr.microsoft.com/devcontainers/rust:2.0.12-bookworm",
+	"workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+	"features": {
+		"ghcr.io/devcontainers/features/go:1": {
+			"version": "1.22",
+			"installGoTools": false
+		}
+	},
+	"postCreateCommand": "go install golang.org/x/tools/gopls@v0.16.2 && go install github.com/go-delve/delve/cmd/dlv@v1.22.1 && go install honnef.co/go/tools/cmd/staticcheck@2024.1.1",
+	"runArgs": [
+		"--name", "embedded-cicd-dev"
+	],
+	"containerEnv": {
+		"GOTOOLCHAIN": "local"
+	}
+}
